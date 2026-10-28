@@ -1,0 +1,15 @@
+import { mkdir, copyFile, cp, readFile, rm } from "node:fs/promises";
+import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
+const root = new URL("../", import.meta.url);
+const { version } = JSON.parse(await readFile(new URL("manifest.json", root)));
+const dir = new URL("dist/qingdu/", root);
+await rm(dir, { recursive: true, force: true });
+await mkdir(dir, { recursive: true });
+for (const file of ["manifest.json", "LICENSE", "README.md", "PRIVACY.md"]) await copyFile(new URL(file, root), new URL(file, dir));
+for (const folder of ["src", "icons"]) await cp(new URL(`${folder}/`, root), new URL(`${folder}/`, dir), { recursive: true });
+const output = new URL(`dist/qingdu-${version}.zip`, root);
+await rm(output, { force: true });
+const result = spawnSync("zip", ["-q", "-r", fileURLToPath(output), "."], { cwd: fileURLToPath(dir), stdio: "inherit" });
+if (result.status !== 0) throw new Error("ZIP failed. Install the zip command or compress dist/qingdu manually.");
+console.log(`Extension: ${fileURLToPath(output)}`);

@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>清读 Qingdu</title>
+  <link rel="stylesheet" href="sidepanel.css">
+  <script type="module" src="sidepanel.js"></script>
+</head>
+<body>
+  <header class="brand">
+    <div class="brand-icon" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+    <div><h1>清读 <span>Qingdu</span></h1><p>让文字，慢慢说。</p></div>
+    <span class="local-badge">本地朗读</span>
+  </header>
+  <nav class="tabs" aria-label="功能导航">
+    <button data-view="reader" aria-current="page">阅读</button>
+    <button data-view="library">书架</button>
+    <button data-view="settings">设置</button>
+  </nav>
+  <div id="notice" role="status" aria-live="polite" hidden></div>
+  <main>
+    <section id="reader-view" aria-label="阅读">
+      <button id="read-page" class="primary wide"><span aria-hidden="true">↗</span> 读取当前页 / 选中文字</button>
+      <p class="small source-hint">文章留在设备上，断网也能听。</p>
+      <details id="import-details" class="import-box">
+        <summary>粘贴文本 · 导入文件 <span>＋</span></summary>
+        <form id="import-form">
+          <label for="text-title">标题</label><input id="text-title" placeholder="给这段文字起个名字" maxlength="160">
+          <label for="paste-text">正文</label><textarea id="paste-text" rows="5" placeholder="把想听的文字放在这里…" maxlength="80000"></textarea>
+          <div class="import-actions"><button type="submit" class="primary">加入阅读</button><button id="choose-file" type="button" class="quiet">选择文件</button><input id="text-file" type="file" accept=".txt,.md,.markdown,text/plain,text/markdown" hidden></div>
+          <p class="small">支持 UTF-8 的 TXT / Markdown，每次最多 80,000 字。</p>
+        </form>
+      </details>
+      <div id="empty" class="empty">
+        <div class="empty-orbit" aria-hidden="true"><span>≋</span></div>
+        <h2>给眼睛放个假</h2><p>打开一篇文章，或放进一段文字。<br>清读会接着你上次的位置读。</p>
+        <div class="empty-note">无需账号 · 无需代理 · 本地保存</div>
+      </div>
+      <article id="article" hidden>
+        <div class="article-heading"><div><p id="source" class="eyebrow">阅读文本</p><h2 id="article-title"></h2></div><button id="star" class="icon-button" aria-label="收藏当前文章">☆</button></div>
+        <p id="article-meta" class="small"></p>
+        <div id="sentence-list" aria-label="句子列表"></div>
+        <div class="pagination"><button id="page-back" class="quiet" aria-label="上一页句子">←</button><span id="page-label" class="small"></span><button id="page-forward" class="quiet" aria-label="下一页句子">→</button></div>
+      </article>
+    </section>
+    <section id="library-view" aria-label="书架" hidden>
+      <div class="section-heading"><h2>我的书架</h2><span id="library-count" class="small"></span></div>
+      <p class="small">自动保留最近 12 篇，总计最多 40 万字。收藏标记方便寻找，容量满后最旧文章仍会移除。</p>
+      <div id="library-list"></div>
+      <button id="clear-data" class="danger quiet">清空书架和阅读记录</button>
+    </section>
+    <section id="settings-view" aria-label="设置" hidden>
+      <h2>声音与偏好</h2>
+      <label for="voice">本地声音</label>
+      <select id="voice"><option value="auto">自动匹配语言 · 仅本地系统语音</option></select>
+      <div class="voice-status"><span id="voice-count" class="small">正在检查声音…</span><button id="refresh-voices" class="quiet">刷新</button></div>
+      <details class="guide"><summary>安装中文声音</summary>
+        <p><strong>Windows 10 / 11</strong><br>设置 → 时间和语言 → 语言和区域 → 添加中文（简体，中国）→ 语言选项 → 下载「语音」。重新启动浏览器后刷新。部分 OneCore / 自然声音不会暴露给 Chrome 的 SAPI 5，请以此处列出的本地声音为准。</p>
+        <p><strong>macOS</strong><br>系统设置 → 辅助功能 → 朗读内容（或「朗读与语音」）→ 系统声音 → 管理声音 → 中文 → 下载声音。下载完成后重启浏览器并刷新。</p>
+        <p>声音只需安装一次，之后可离线使用。清读只列出操作系统提供的本地声音，音质和语言范围取决于系统。</p>
+      </details>
+      <label class="switch-row"><span>跟随朗读位置</span><input id="follow" type="checkbox" checked></label>
+      <label class="switch-row"><span>提取时跳过代码块</span><input id="skip-code" type="checkbox" checked></label>
+      <p class="small">更改代码过滤后，请重新读取文章。</p>
+      <label for="theme">外观</label><select id="theme"><option value="system">跟随系统</option><option value="light">浅色</option><option value="dark">深色</option></select>
+      <div class="section-heading dictionary-heading"><h2>发音词典</h2><span class="small">字面替换</span></div>
+      <p class="small">每行「原词=读法」，例如 API=诶批艾。按长词优先替换，修改后的读法不会再次替换。</p>
+      <label for="dictionary" class="sr-only">发音替换规则</label><textarea id="dictionary" rows="5" placeholder="重庆=崇庆&#10;API=诶批艾"></textarea>
+      <button id="save-dictionary" class="primary">保存词典</button>
+      <div class="privacy-card"><strong>你的文章，只在这里。</strong><p>无远程语音、无统计、无上传。书架和偏好存储在浏览器本地，卸载扩展会删除它们。</p></div>
+      <p class="small version">清读 0.1.0 · Chrome / Edge 120+</p>
+    </section>
+  </main>
+  <footer class="player" aria-label="播放控制">
+    <div class="now-playing"><span id="play-status">准备阅读</span><span id="position">0 / 0</span></div>
+    <label for="progress" class="sr-only">跳转到句子</label><input id="progress" type="range" min="0" max="0" value="0" disabled>
+    <div class="transport"><button id="previous" class="icon-button" aria-label="上一句" disabled>⏮</button><button id="play" class="play-button" aria-label="播放" disabled>▶</button><button id="next" class="icon-button" aria-label="下一句" disabled>⏭</button><button id="stop" class="icon-button" aria-label="停止" disabled>■</button></div>
+    <div class="player-settings"><label for="rate">语速 <output id="rate-label">1.0×</output></label><input id="rate" type="range" min="0.5" max="3" step="0.1" value="1"><label for="volume">音量</label><input id="volume" type="range" min="0" max="1" step="0.05" value="1"></div>
+    <div class="sleep-row"><label for="sleep">睡眠定时</label><select id="sleep"><option value="0">关闭</option><option value="5">5 分钟</option><option value="15">15 分钟</option><option value="30">30 分钟</option><option value="60">60 分钟</option><option value="120">120 分钟</option></select><span id="sleep-left" class="small"></span></div>
+  </footer>
+</body>
+</html>

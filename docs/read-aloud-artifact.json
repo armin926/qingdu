@@ -1,0 +1,10 @@
+{
+  "source": "https://clients2.google.com/service/update2/crx",
+  "extensionId": "hdhinadidafjejdhmfkjgnolgimiaplp",
+  "crxVersion": 3,
+  "crxSha256": "5a0ffb4df5a67face576da8340739abb3093a8d1eed96acc818edd49237ad763",
+  "zipSha256": "54e81ac8565a8ef9b11ecc6b101927975318680a10855d5af03543709c5092da",
+  "version": "2.28.1",
+  "files": 138,
+  "signatureVerified": false
+}
