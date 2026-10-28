@@ -93,7 +93,8 @@ async function readPage() {
     if (!result?.ok) throw new Error(result?.error || "无法提取正文。");
     return await loadArticle(result.article, tab.id);
   } catch (error) {
-    if (/Cannot access|cannot be scripted|Missing host|extensions gallery|permission/i.test(error.message)) throw new Error("此页面不允许插件读取，或尚未授权。请在普通网页点击清读图标后重试；PDF 和浏览器内部页面请使用粘贴文本。");
+    if (/must request permission|Missing host|permission/i.test(error.message)) throw new Error("清读尚未获得该网站的访问权限。请在浏览器的扩展管理中允许访问该网站，刷新网页后重试。");
+    if (/Cannot access|cannot be scripted|extensions gallery/i.test(error.message)) throw new Error("此页面受浏览器保护，不能直接读取。浏览器内部页面、扩展商店和 PDF 请使用粘贴文本。");
     throw error;
   }
 }
@@ -147,7 +148,25 @@ async function handle(message) {
 
 let commandQueue = Promise.resolve();
 chrome.runtime.onMessage.addListener((message, sender, reply) => {
-  if (sender.id !== chrome.runtime.id || !message?.type || message.type.startsWith("QINGDU_")) return;
+  if (sender.id !== chrome.runtime.id || !message?.type) return;
+  if (message.type === "QINGDU_READ_SELECTION") {
+    if (!sender.tab?.id || sender.frameId > 0 || typeof message.text !== "string" || !message.text.trim() || message.text.length > MAX_TEXT) {
+      reply({ ok: false, error: "选中文字为空、超过 80,000 字或来自不支持的框架。" });
+      return;
+    }
+    // Open before awaiting storage or the command queue, preserving the click's user gesture.
+    const opened = chrome.sidePanel.open({ tabId: sender.tab.id }).then(() => null, error => error);
+    const command = commandQueue.catch(() => {}).then(() => ready).then(async () => {
+      const error = await opened;
+      if (error) throw error;
+      await loadArticle({ title: message.title, url: sender.tab.url, lang: message.lang, blocks: [{ text: message.text, sourceId: 0 }] }, sender.tab.id);
+      await saveQueue;
+    });
+    commandQueue = command;
+    command.then(() => reply({ ok: true }), error => reply({ ok: false, error: error.message }));
+    return true;
+  }
+  if (message.type.startsWith("QINGDU_")) return;
   if (sender.tab) { reply({ ok: false, error: "控制操作只能来自清读界面。" }); return; }
   const command = commandQueue.catch(() => {}).then(() => ready).then(() => handle(message));
   commandQueue = command;

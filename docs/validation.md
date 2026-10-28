@@ -1,28 +1,52 @@
-# 验证记录 · 0.1.0
+# 验证记录 · 0.1.1
 
-2026-10-28，宿主 macOS。请按证据边界阅读结果。
+2026-10-28，宿主 macOS，真实 Chrome **156.0.8078.48**。测试使用独立浏览器配置，未读取用户的浏览器配置、登录凭据或阿里云账户数据。
 
-## 已通过
+## 0.1.0 漏检与根因
 
-- `npm test`：18 项测试全部通过。覆盖中文/日文/韩文检测、Unicode 分句、长文本上限、字面词典及最长词优先、远程/第三方声音过滤、无声音报错、播放/暂停/结束竞态、迟到的选声结果、过期播放事件、跳句边界、定时结束、文章保存与重复导入恢复、消息来源约束、无效设置和 Markdown 代码过滤。
-- `npm run check`：Manifest V3、运行文件存在、JS 语法、无常驻 host permission、`connect-src 'none'` 和源码无网络调用检查。
-- 在 Ego Browser 的真实 DOM 测试页直接执行项目 `content.js`：提取 5 个正文块，导航、边栏、隐藏段落及代码块均未进入结果；关闭代码过滤后代码进入结果；CSS Highlight 可设置且可清除。
-- 浏览器预览使用项目原有的 background、player、core、sidepanel 代码，外加仅保存在工作目录的 Chrome API 适配层。确认文章加载、侧栏列表、4/4 句进度恢复、中文语音状态、词典格式错误提示与保存、浅色/深色界面、280px 窄窗口无横向溢出。
-- 发现并修复播放区挡住词典保存按钮的问题。最终布局使用固定高度的页面和独立滚动的正文区，内容区底边与播放区顶边相接，保存按钮经实际点击验证可用。
-- 系统 `say -v Tingting` 成功生成中文 AIFF：22,050 Hz、单声道、16 位、3.698 秒。证明宿主中文系统语音可合成本地音频。
+0.1.0 的 18 项模拟 API 测试通过，但 `chrome.scripting.executeScript` 被直接模拟成成功，没有覆盖真实浏览器权限。原生扩展的侧栏读取未验收，导致普通网页读取失败被漏检。
 
-## 预览不等于真实扩展验收
+在独立 Chrome 中加载原始 0.1.0 ZIP，从真实侧栏发起 `READ_PAGE`，重复复现出用户截图中的完整错误。Chrome 的原始错误为：
 
-预览中的 Chrome API、存储、当前页来源和闹钟是适配层；正文提取另在真实 DOM 上单独验证。模拟的存储恢复不等于浏览器 `chrome.storage.local` 已实机验收。
+> Cannot access contents of the page. Extension manifest must request permission to access the respective host.
 
-预览通过 Web Speech 的本地声音桥接 TTS，在 CDP 模拟离线后产生 4 个结束事件并推进到 4/4 句，但这些事件间隔过短（毫秒级）且没有可靠的开始事件。因此不把它记为已听到真实离线播放，更不记为原生 `chrome.tts` 通过。系统 `say` 的本地音频生成是独立证据。
+实际权限的 `origins` 是空数组。只修改诊断副本的 manifest、增加 HTTP/HTTPS host permissions，同一真实侧栏流程立即成功提取正文，JavaScript 代码保持原样。由此确认网站访问权限缺失是这个问题的根因，不是网页正文不存在。
 
-宿主浏览器自动化接口不支持 `Extensions.loadUnpacked`；未更改用户浏览器配置或绕过文件选择提示。原生解压扩展安装、`chrome.tts` 真实播放、关闭侧栏后长时间播放及系统睡眠/唤醒需要后续实机检查。
+0.1.1 补齐网站权限和自动内容脚本；分别提示未授权网站与浏览器保护页面，避免混为同一个错误。
 
-## 待验收
+## 0.1.1 已通过
 
-- Windows Chrome / Edge 的安装、SAPI 5 中文声音可用性、音质、原生离线播放。
-- macOS 原生扩展 `chrome.tts` 播放、30 分钟长文、服务工作线程回收与系统睡眠/唤醒。
-- 大陆无代理网络下的完整安装与使用路径；首版没有运行时外部请求，但没有完成该场景的全程录制。
-- 大量真实网站的正文完整率、封闭 Shadow DOM、复杂 iframe、PDF / EPUB / OCR。
-- 与 Read Aloud 的盲听和任务完成率比较。当前交付具有明确的离线与本地数据设计改进，尚未宣称全面超越。
+- `npm test`：20 项测试通过。覆盖原有 18 项逻辑，以及权限错误分类、选中文字消息来源、侧栏打开、只导入选中段落和等待用户播放。
+- `npm run check`：Manifest V3、包内文件、JavaScript 语法、HTTP/HTTPS 内容脚本与权限一致、`connect-src 'none'`，运行源码没有网络请求。
+- **真实内容脚本**：未先打开扩展，选中普通网页中的段落后清读按钮自动出现；真实鼠标点击后打开原生侧栏，只导入选中的两个句子，并保持 ready 状态。
+- **真实侧栏 UI**：用 Chrome DevTools Protocol 的鼠标事件点击侧栏「读取当前页」，提取完整正文，过滤导航、隐藏文字、广告与代码。
+- **跨网站场景**：侧栏保持打开，把当前页从 `127.0.0.1` 导航到 `localhost`，成功读取包含标题、说明和空数据表格的控制台布局页面。两个域名是不同 origin，覆盖临时授权失效的场景。
+- **真实本地存储**：跳到第 2 句后，实际 `chrome.storage.local` 中的当前文章 position 为 1。
+- **真实本地 TTS**：枚举到 180 个系统本地声音，选择「婷婷」，将浏览器网络设为 offline 后使用原生 `chrome.tts` 朗读两句中文并收到完成事件，状态变为 ended。实测详情保存在 `native-qa.json`。
+
+这些检查使用项目原有 background、player、core、content 和 sidepanel 文件，没有替换 Chrome API 或语音接口。测试网页是本地可复现样本，不是用户登录的阿里云控制台。
+
+## 原生回归脚本
+
+`tests/native-ui.js` 是 Playwright CLI 的 run-code 脚本，连接真实原生侧栏目标并操作真实扩展 API。`tests/native-fixture-server.mjs` 提供文章与控制台布局样本。
+
+先启动样本服务器：
+
+```sh
+node tests/native-fixture-server.mjs
+```
+
+使用独立的 Chrome 配置启动 Playwright CLI：launchOptions 中设 `ignoreDefaultArgs: ["--disable-extensions"]` 与 `args: ["--enable-unsafe-extension-debugging"]`，使用 `--persistent`，然后通过 browser CDP 的 `Extensions.loadUnpacked` 加载本项目绝对路径。此测试标志只用于独立测试浏览器，不用于用户的日常浏览器。
+
+```sh
+npx --yes --package @playwright/cli playwright-cli -s=qingdu-native run-code --filename=tests/native-ui.js
+npx --yes --package @playwright/cli playwright-cli -s=qingdu-native eval '() => globalThis.__qingduNativeQA' --raw
+```
+
+`passed: true` 才表示全部原生检查通过。不要只看 CLI 的退出码：该版本 CLI 可能把脚本错误输出为 `### Error`，但返回 0。运行时安装包不含这些测试工具。
+
+## 仍未验收
+
+Windows Chrome/Edge 实机、30 分钟后台播放、系统睡眠/唤醒、大量真实网站、复杂 iframe、封闭 Shadow DOM、PDF/EPUB/OCR；用户登录状态下的阿里云控制台也未直接访问。原生短文离线检查不等于完整的大陆无代理安装与使用路径录制。
+
+插件商店发布继续停止，没有付款或提交审核。

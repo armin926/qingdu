@@ -1,10 +1,12 @@
 {
   "manifest_version": 3,
   "name": "清读 Qingdu · 离线朗读",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "用本地系统语音朗读网页、选中文字和文本。支持句子高亮、进度记忆、发音词典与睡眠定时，无需代理。",
   "minimum_chrome_version": "120",
   "permissions": ["activeTab", "scripting", "storage", "tts", "sidePanel", "contextMenus", "alarms"],
+  "host_permissions": ["http://*/*", "https://*/*"],
+  "content_scripts": [{ "matches": ["http://*/*", "https://*/*"], "js": ["src/content.js"], "run_at": "document_idle" }],
   "background": { "service_worker": "src/background.js", "type": "module" },
   "side_panel": { "default_path": "src/sidepanel.html" },
   "action": { "default_title": "打开清读", "default_icon": "icons/icon128.png" },

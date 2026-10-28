@@ -1,0 +1,19 @@
+{
+  "browser": "156.0.8078.48",
+  "checks": [
+    "selection button appears without opening the extension first",
+    "trusted click opens native side panel and imports exactly the selection without autoplay",
+    "real side-panel read-page click succeeds and filters navigation, hidden content and code",
+    "reading another origin with a console/table layout succeeds while the side panel stays open",
+    "native chrome.storage.local saves the selected sentence position",
+    "native chrome.tts reads a short Chinese text with browser networking offline and sends completion events"
+  ],
+  "localVoiceCount": 180,
+  "nativeTts": {
+    "voice": "婷婷",
+    "offline": true,
+    "durationMs": 2960,
+    "status": "ended"
+  },
+  "passed": true
+}

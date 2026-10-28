@@ -4,14 +4,16 @@ let listener;
 let stored = {};
 let alarm = null;
 let onAlarm;
+let injectionError = null;
+const openedPanels = [];
 const events = [];
 globalThis.chrome = {
   runtime: { id: "test", onMessage: { addListener(fn) { listener = fn; } }, onInstalled: { addListener() {} }, sendMessage: async () => {}, getPlatformInfo: async () => ({ os: "mac" }) },
   storage: { local: { get: async () => structuredClone(stored), set: async data => { stored = structuredClone(data); } } },
   tts: { getVoices: async () => [{ voiceName: "Native", lang: "zh-CN", remote: false }], speak: async (text, options) => events.push({ text, options }), stop() {}, pause() {}, resume() {} },
   tabs: { query: async () => [{ id: 1 }], sendMessage: async () => ({ ok: true, article: { title: "网页正文", url: "https://example.com", blocks: [{ text: "第一句。第二句。" }] } }) },
-  scripting: { executeScript: async () => {} },
-  sidePanel: { setPanelBehavior: async () => {}, open: async () => {} },
+  scripting: { executeScript: async () => { if (injectionError) throw new Error(injectionError); } },
+  sidePanel: { setPanelBehavior: async () => {}, open: async options => { openedPanels.push(options); } },
   contextMenus: { removeAll(fn) { fn(); }, create() {}, onClicked: { addListener() {} } },
   commands: { onCommand: { addListener() {} } },
   alarms: { clear: async () => { alarm = null; }, create: async (name, options) => { alarm = { name, ...options }; }, onAlarm: { addListener(fn) { onAlarm = fn; } } }
@@ -43,6 +45,27 @@ test("background reads current page and enforces message and text boundaries", a
   assert.equal((await send("SEEK", { index: -1 })).ok, false);
   assert.equal((await send("IMPORT_TEXT", { text: "a".repeat(80001) })).ok, false);
   assert.equal((await send("PLAY", {}, { id: "test", tab: { id: 1 } })).ok, false);
+});
+test("missing host authorization is distinguished from protected browser pages", async () => {
+  injectionError = "Cannot access contents of the page. Extension manifest must request permission to access the respective host.";
+  let reply = await send("READ_PAGE");
+  assert.equal(reply.ok, false);
+  assert.match(reply.error, /尚未获得该网站的访问权限/);
+  injectionError = "Cannot access a chrome:// URL";
+  reply = await send("READ_PAGE");
+  assert.match(reply.error, /受浏览器保护/);
+  injectionError = null;
+});
+test("selection shortcut opens the sender's side panel and imports only selected text without autoplay", async () => {
+  const reply = await send("QINGDU_READ_SELECTION", { text: "只读取这一段。", title: "选中文字", lang: "zh-CN" }, { id: "test", frameId: 0, tab: { id: 9, url: "https://example.com/selection" } });
+  assert.equal(reply.ok, true);
+  assert.equal(openedPanels.at(-1).tabId, 9);
+  const state = (await send("GET_STATE")).data.state;
+  assert.equal(state.document.sentences.map(item => item.text).join(""), "只读取这一段。");
+  assert.equal(state.document.sourceTabId, 9);
+  assert.equal(state.status, "ready");
+  assert.equal((await send("QINGDU_READ_SELECTION", { text: "" }, { id: "test", tab: { id: 9 } })).ok, false);
+  assert.equal((await send("QINGDU_READ_SELECTION", { text: "iframe" }, { id: "test", frameId: 2, tab: { id: 9 } })).ok, false);
 });
 test("sleep creates a persistent alarm and malformed settings cannot overwrite valid ones", async () => {
   const reply = await send("SLEEP", { minutes: 5 });
